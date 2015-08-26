@@ -31,11 +31,13 @@ namespace Verdant.Hub.Drivers
             _wifi.Open();
             _wifi.EnableDhcp();
             _wifi.EnableDynamicDns();
-            _wifi.Join("XXX", "XXX");
         }
 
         public void Initialize()
         {
+            _annunciator.ConnectivityState = ConnectivityState.Unknown;
+
+            //TODO: use settings class to retrieve saved network credentials, or enter config mode
         }
 
         private void NetworkChange_NetworkAvailabilityChanged(object sender, NetworkAvailabilityEventArgs e)
