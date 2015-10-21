@@ -17,7 +17,7 @@ namespace Verdant.Hub.Drivers
             _display = new GTM.GHIElectronics.DisplayTE35(14, 13, 12, 10);
         }
 
-        public void Initialize()
+        public void Initialize(object unused)
         {
             _display.WPFWindow.Background = new SolidColorBrush(Colors.Black);
             _display.WPFWindow.TouchDown += WPFWindow_TouchDown;

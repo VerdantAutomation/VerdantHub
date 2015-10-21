@@ -7,6 +7,6 @@ namespace Verdant.HAL
 {
     public interface IDisplay
     {
-        void Initialize();
+        void Initialize(object host);
     }
 }

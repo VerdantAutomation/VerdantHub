@@ -52,7 +52,7 @@ namespace Verdant.Hub
             GHI.Processor.Watchdog.ResetCounter();
 
             var display = (IDisplay)DiContainer.Instance.Resolve(typeof(IDisplay));
-            display.Initialize();
+            display.Initialize(this);
             GHI.Processor.Watchdog.ResetCounter();
 
             _annunciator = (IAnnunciator)DiContainer.Instance.Resolve(typeof(IAnnunciator));

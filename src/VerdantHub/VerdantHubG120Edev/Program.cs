@@ -3,15 +3,16 @@ using System.Threading;
 using Microsoft.SPOT;
 using Microsoft.SPOT.Hardware;
 using Microsoft.SPOT.Net;
+using Microsoft.SPOT.Net.NetworkInformation;
+using Microsoft.SPOT.Presentation;
 using Microsoft.SPOT.Presentation.Media;
+using Microsoft.SPOT.Touch;
 
 using GHI.Pins;
-using GHI.Processor;
-using GTM = Gadgeteer.Modules;
-using Microsoft.SPOT.Presentation;
-using Microsoft.SPOT.Touch;
 using GHI.Networking;
-using Microsoft.SPOT.Net.NetworkInformation;
+
+using Verdant.Common;
+using Verdant.HAL;
 
 namespace VerdantHubG120Edev
 {
@@ -22,25 +23,18 @@ namespace VerdantHubG120Edev
         private static OutputPort _led3 = new OutputPort(G120E.Gpio.P3_28, false);
         private static OutputPort _led4 = new OutputPort(G120E.Gpio.P3_21, false);
         private static BaseInterface _netif;
-        private static Bitmap _lcd;
+
+        private IAnnunciator _annunciator;
 
         public static void Main()
         {
-            new Program().Run();
+            var p = new Program();
+            p.Initialize();
+            p.Run();
         }
 
         private Program()
         {
-            OneTimeConfig();
-
-            _lcd = new Bitmap(SystemMetrics.ScreenWidth, SystemMetrics.ScreenHeight);
-            Touch.Initialize(this);
-
-            this.MainWindow = new Window();
-            this.MainWindow.TouchDown += MainWindow_TouchDown;
-            this.MainWindow.TouchUp += MainWindow_TouchUp;
-            this.MainWindow.TouchMove += MainWindow_TouchMove;
-
             var eth = new EthernetBuiltIn();
             eth.Open();
             if (!eth.CableConnected)
@@ -65,20 +59,46 @@ namespace VerdantHubG120Edev
 
         }
 
-        private void OneTimeConfig()
+        private void Initialize()
         {
-            Display.Populate(Display.GHIDisplay.DisplayTE35);
-            Display.ShowBootupMessages = false;
-            if (Display.Save())
-                PowerState.RebootDevice(false);
+#if DEBUG
+            GHI.Processor.Watchdog.Enable(120000);
+#else
+            GHI.Processor.WatchDog.Enable(5000);
+#endif
 
-            Bitmap startupLogo = new Bitmap(Resources.GetBytes(Resources.BinaryResources.SpashScreen), Bitmap.BitmapImageType.Bmp);
-            StartupLogo.Image = startupLogo;
-            StartupLogo.Enabled = true;
-            StartupLogo.X = 70;
-            StartupLogo.Y = 30;
-            if (StartupLogo.Save()) // save startup logo & reboot device, if necessary
-                PowerState.RebootDevice(false);
+            DiContainer.Instance.Install(
+                new Verdant.Hub.Drivers.Installer(),
+                new Verdant.HAL.HostEnvironmentInstaller()
+            );
+            GHI.Processor.Watchdog.ResetCounter();
+
+            // initialize legacy drivers
+            InitializeHal();
+            GHI.Processor.Watchdog.ResetCounter();
+
+            var display = (IDisplay)DiContainer.Instance.Resolve(typeof(IDisplay));
+            display.Initialize(this);
+            GHI.Processor.Watchdog.ResetCounter();
+
+            //_annunciator = (IAnnunciator)DiContainer.Instance.Resolve(typeof(IAnnunciator));
+
+            //var wifi = (IWirelessNetworking)DiContainer.Instance.Resolve(typeof(IWirelessNetworking));
+            //wifi.Initialize();
+        }
+
+        private void Timer_Tick(Timer timer)
+        {
+            // Proof of life
+            _annunciator.PulseDebug();
+            GHI.Processor.Watchdog.ResetCounter();
+        }
+
+        private void InitializeHal()
+        {
+
+
+            Debug.Print("HAL initialization complete...");
         }
 
         private void NetworkChange_NetworkAvailabilityChanged(object sender, NetworkAvailabilityEventArgs e)
@@ -90,31 +110,6 @@ namespace VerdantHubG120Edev
         {
             var addr = _netif.IPAddress;
             Debug.Print("ip addr : " + addr);
-        }
-
-        private void MainWindow_TouchMove(object sender, Microsoft.SPOT.Input.TouchEventArgs e)
-        {
-        }
-
-        private void MainWindow_TouchUp(object sender, Microsoft.SPOT.Input.TouchEventArgs e)
-        {
-            _led1.Write(false);
-        }
-
-        private void MainWindow_TouchDown(object sender, Microsoft.SPOT.Input.TouchEventArgs e)
-        {
-            _led1.Write(true);
-
-            //_lcd.DrawLine(Colors.Green, 1, 20, 20, 40, 40);
-            if (e.Touches.Length > 0)
-            {
-                _lcd.DrawEllipse(Colors.Blue, e.Touches[0].X, e.Touches[0].Y, 5, 5);
-                _lcd.Flush();
-            }
-            //lcd.DrawText("Hello, World!", font, Colors.White, 0, 0);
-            var addr = _netif.IPAddress;
-            Debug.Print("ip addr : " + addr);
-
         }
     }
 }
